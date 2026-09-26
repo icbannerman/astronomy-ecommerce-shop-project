@@ -79,4 +79,10 @@ resource "aws_instance" "workstation" {
   tags = {
     Name = var.name
   }
+
+  lifecycle {
+    # A newer Ubuntu AMI or an edited bootstrap script should not replace or restart
+    # a running workstation. Both only matter when the instance is first created.
+    ignore_changes = [ami, user_data]
+  }
 }
