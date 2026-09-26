@@ -20,6 +20,8 @@ receivers:
     collection_interval: 10s
   docker_stats:
     endpoint: unix:///var/run/docker.sock
+    # Default client API (1.25) is rejected by Docker Engine 29+ (minimum 1.40).
+    api_version: "1.44"
   postgresql:
     endpoint: ${POSTGRES_HOST}:${POSTGRES_PORT}
     username: root
