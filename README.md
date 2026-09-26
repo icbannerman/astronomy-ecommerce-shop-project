@@ -48,3 +48,4 @@ _Diagram coming soon._
   (Apache 2.0; see `LICENSE` and `README.opentelemetry.md`).
 - Project structure follows Abhishek Veeramalla's *Ultimate DevOps Project* course;
   the DevOps implementation in this repo is my own work.
+- Used Claude (Anthropic) as a learning and debugging assistant.
