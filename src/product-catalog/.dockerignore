@@ -1,0 +1,6 @@
+# Keep the build context small: only go.mod/go.sum, main.go, genproto/ and products/ are needed.
+Dockerfile
+.dockerignore
+README.md
+product-catalog
+*.test
