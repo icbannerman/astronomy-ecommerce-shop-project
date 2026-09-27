@@ -6,9 +6,9 @@
 #   docker run --rm currency:v1
 #
 # Stages:
-#   base    -> Alpine + gRPC/Protobuf libraries (needed to build AND to run)
+#   base    -> Alpine + gRPC/Protobuf -dev packages (needed to build)
 #   builder -> base + compiler tools; builds OpenTelemetry C++, then the currency program
-#   release -> base + only the finished program (final image)
+#   release -> plain Alpine + only the runtime libraries + the finished program (final image)
 
 # ---------- Stage 1: base ----------
 # Pinned Alpine version so library versions don't change between builds.
@@ -54,9 +54,22 @@ RUN mkdir -p build && cd build \
     && cmake .. \
     && make -j$(nproc) install
 
+# List the system libraries the program actually needs at runtime.
+# scanelf reads the "needed libraries" from the binary and our .so files; libraries we
+# copy ourselves (/usr/local/lib) are skipped; the rest become apk names like "so:libgrpc++.so.1.x".
+RUN apk add --no-cache scanelf \
+    && scanelf --needed --nobanner --format '%n#p' /usr/local/bin/currency /usr/local/lib/*.so* \
+       | tr ',' '\n' | sort -u \
+       | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+       > /runtime-deps.txt
+
 # ---------- Stage 3: release (final image) ----------
-# Fresh copy of base: runtime libraries only, no compiler or source code.
-FROM base AS release
+# Plain Alpine (NOT base): base has the -dev packages (headers, protoc, static libs) that are
+# only needed to build. Here we install only the runtime libraries listed above.
+FROM alpine:3.21 AS release
+
+COPY --from=builder /runtime-deps.txt /tmp/runtime-deps.txt
+RUN apk add --no-cache $(cat /tmp/runtime-deps.txt) && rm /tmp/runtime-deps.txt
 
 # The finished program, plus the shared OpenTelemetry libraries (.so) it loads at startup.
 # (Without the .so files it fails with "Error relocating ... symbol not found".)
