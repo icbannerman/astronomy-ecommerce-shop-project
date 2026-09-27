@@ -66,6 +66,9 @@ COPY --from=builder /usr/local/lib/*.so* /usr/local/lib/
 
 # Default port (matches CURRENCY_PORT in .env); override with -e CURRENCY_PORT=...
 ENV CURRENCY_PORT=7001
+# server.cpp reads VERSION with getenv() and crashes if it's unset
+# ("basic_string: construction from null"). docker-compose sets it; this is the fallback.
+ENV VERSION=2.1.3
 EXPOSE 7001
 
 # Run as Alpine's built-in unprivileged user instead of root.
