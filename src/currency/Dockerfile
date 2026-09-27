@@ -58,8 +58,11 @@ RUN mkdir -p build && cd build \
 # Fresh copy of base: runtime libraries only, no compiler or source code.
 FROM base AS release
 
-# Only the finished program. (Upstream copies all of /usr/local; this keeps the image smaller.)
+# The finished program, plus the shared OpenTelemetry libraries (.so) it loads at startup.
+# (Without the .so files it fails with "Error relocating ... symbol not found".)
+# Upstream copies all of /usr/local; copying only these keeps the image smaller.
 COPY --from=builder /usr/local/bin/currency /usr/local/bin/currency
+COPY --from=builder /usr/local/lib/*.so* /usr/local/lib/
 
 # Default port (matches CURRENCY_PORT in .env); override with -e CURRENCY_PORT=...
 ENV CURRENCY_PORT=7001
