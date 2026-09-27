@@ -68,6 +68,11 @@ RUN apk add --no-cache scanelf \
 # only needed to build. Here we install only the runtime libraries listed above.
 FROM alpine:3.21 AS release
 
+# Links the image to the GitHub repo when pushed to ghcr.io (no manual "Connect Repository").
+LABEL org.opencontainers.image.source="https://github.com/icbannerman/astronomy-ecommerce-shop-project" \
+      org.opencontainers.image.title="currency" \
+      org.opencontainers.image.description="Currency conversion gRPC service (C++) for the Astronomy Shop"
+
 COPY --from=builder /runtime-deps.txt /tmp/runtime-deps.txt
 RUN apk add --no-cache $(cat /tmp/runtime-deps.txt) && rm /tmp/runtime-deps.txt
 
