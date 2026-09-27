@@ -50,7 +50,9 @@ WORKDIR /usr/src/app
 COPY locustfile.py people.json ./
 
 # Run as an unprivileged user instead of root.
-RUN useradd --system --uid 10001 app
+# --create-home: Chromium needs a writable home folder (its crash reporter, crashpad, keeps a
+# database there). Without it Chromium dies with "chrome_crashpad_handler: --database is required".
+RUN useradd --system --create-home --uid 10001 app
 USER app
 
 # Locust's web UI (served at /loadgen through the frontend proxy).
