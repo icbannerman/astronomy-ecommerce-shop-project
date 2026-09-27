@@ -1,0 +1,21 @@
+# Override file: run the shop with MY images for the 5 services I containerized.
+# Everything else (ports, env vars, depends_on, volumes) comes from docker-compose.yml.
+#
+# Use:
+#   docker compose -f docker-compose.yml -f docker-compose.myimages.yml up -d
+# Check the final image names:
+#   docker compose -f docker-compose.yml -f docker-compose.myimages.yml config | grep 'image:'
+# Back to the official images:
+#   docker compose up -d
+
+services:
+  product-catalog:
+    image: ghcr.io/icbannerman/product-catalog:v2   # Go
+  currency:
+    image: ghcr.io/icbannerman/currency:v2          # C++
+  ad:
+    image: ghcr.io/icbannerman/ad:v1                # Java
+  fraud-detection:
+    image: ghcr.io/icbannerman/fraud-detection:v1   # Kotlin
+  load-generator:
+    image: ghcr.io/icbannerman/load-generator:v1    # Python
