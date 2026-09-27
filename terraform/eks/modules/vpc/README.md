@@ -1,73 +1,65 @@
 # VPC module
 
-The network that the EKS cluster runs in: one VPC spread across 3 Availability Zones (AZs),
-each with a **public** and a **private** subnet.
+The network that the EKS cluster runs in: one VPC spread across **2 Availability Zones (AZs)**,
+each with one **public** and one **private** subnet. (The module creates one of each per AZ passed in,
+so 3 AZs would also work.)
 
 ## Diagram
 
-Example values (set by the root module): VPC `10.0.0.0/16` in `us-east-2`.
+Values set by the root module: VPC `10.0.0.0/16` in `us-east-2`, AZs `us-east-2a` and `us-east-2b`.
 
 ```mermaid
 flowchart TB
     internet((Internet))
-    igw[Internet Gateway]
+    igw["Internet Gateway<br/>(two-way door)"]
     internet <--> igw
 
     subgraph vpc["VPC 10.0.0.0/16"]
-        direction LR
+        direction TB
 
-        subgraph az3["AZ us-east-2c"]
-            direction TB
-            pub3["Public subnet 10.0.6.0/24<br/>NAT Gateway 3 + Elastic IP"]
-            priv3["Private subnet 10.0.3.0/24<br/>EKS worker nodes"]
+        subgraph public["PUBLIC subnets · route: 0.0.0.0/0 → Internet Gateway"]
+            direction LR
+            pub1["us-east-2a<br/>10.0.101.0/24<br/>NAT Gateway 1 + Elastic IP"]
+            pub2["us-east-2b<br/>10.0.102.0/24<br/>NAT Gateway 2 + Elastic IP"]
         end
 
-        subgraph az2["AZ us-east-2b"]
-            direction TB
-            pub2["Public subnet 10.0.5.0/24<br/>NAT Gateway 2 + Elastic IP"]
-            priv2["Private subnet 10.0.2.0/24<br/>EKS worker nodes"]
-        end
-
-        subgraph az1["AZ us-east-2a"]
-            direction TB
-            pub1["Public subnet 10.0.4.0/24<br/>NAT Gateway 1 + Elastic IP"]
-            priv1["Private subnet 10.0.1.0/24<br/>EKS worker nodes"]
+        subgraph private["PRIVATE subnets · route: 0.0.0.0/0 → NAT in the same AZ"]
+            direction LR
+            priv1["us-east-2a<br/>10.0.1.0/24<br/>EKS worker nodes"]
+            priv2["us-east-2b<br/>10.0.2.0/24<br/>EKS worker nodes"]
         end
     end
 
-    igw <-->|"public route table: 0.0.0.0/0 → IGW"| pub1
+    igw <--> pub1
     igw <--> pub2
-    igw <--> pub3
+    pub1 ---|"NAT 1: outbound only"| priv1
+    pub2 ---|"NAT 2: outbound only"| priv2
 
-    pub1 <-->|"route table 1: 0.0.0.0/0 → NAT 1 (out only)"| priv1
-    pub2 <-->|"route table 2: → NAT 2"| priv2
-    pub3 <-->|"route table 3: → NAT 3"| priv3
-
-    classDef public fill:#dbeafe,stroke:#2563eb,color:#000
-    classDef private fill:#dcfce7,stroke:#16a34a,color:#000
+    classDef pubc fill:#dbeafe,stroke:#2563eb,color:#000
+    classDef privc fill:#dcfce7,stroke:#16a34a,color:#000
     classDef gw fill:#fef3c7,stroke:#d97706,color:#000
-    class pub1,pub2,pub3 public
-    class priv1,priv2,priv3 private
+    class pub1,pub2 pubc
+    class priv1,priv2 privc
     class igw gw
 ```
 
-- **Two-way arrows (public):** public subnets send and receive internet traffic through the Internet Gateway.
-- **Private ↔ public (through NAT):** private subnets reach the internet only by going **out** through their own
-  AZ's NAT gateway (replies come back on the same connection). Nothing on the internet can start a connection
-  to the worker nodes.
+- **Top layer, public (blue):** sends and receives internet traffic through the Internet Gateway. Holds the NAT gateways (and, later, load balancers).
+- **Bottom layer, private (green):** the worker nodes. They reach the internet only by going **out** through the
+  NAT gateway in their own AZ (replies come back on the same connection). Nothing on the internet can start a
+  connection to them.
 
 ## Parts → Terraform resources
 
 | # | Part | Job | Resource in `main.tf` |
 |---|---|---|---|
 | ① | VPC | The private network and its address range (CIDR) | `aws_vpc.main` |
-| ② | Private subnets (1 per AZ) | Worker nodes; not reachable from the internet | `aws_subnet.private` |
-| ② | Public subnets (1 per AZ) | NAT gateways and internet-facing load balancers | `aws_subnet.public` |
+| ② | Private subnets (1 per AZ → 2) | Worker nodes; not reachable from the internet | `aws_subnet.private` |
+| ② | Public subnets (1 per AZ → 2) | NAT gateways and internet-facing load balancers | `aws_subnet.public` |
 | ③ | Internet Gateway | Two-way door between the VPC and the internet | `aws_internet_gateway.main` |
 | ④ | Elastic IPs | Fixed public IP for each NAT gateway | `aws_eip.nat` |
-| ④ | NAT Gateways (1 per AZ) | One-way door: private subnets reach **out** only | `aws_nat_gateway.main` |
+| ④ | NAT Gateways (1 per AZ → 2) | One-way door: private subnets reach **out** only | `aws_nat_gateway.main` |
 | ⑤ | Public route table | `0.0.0.0/0 → Internet Gateway` | `aws_route_table.public` |
-| ⑤ | Private route tables (1 per AZ) | `0.0.0.0/0 → that AZ's NAT gateway` | `aws_route_table.private` |
+| ⑤ | Private route tables (1 per AZ → 2) | `0.0.0.0/0 → that AZ's NAT gateway` | `aws_route_table.private` |
 | ⑤ | Associations | Attach each subnet to its route table | `aws_route_table_association.*` |
 
 ## Inputs and outputs
@@ -78,8 +70,9 @@ flowchart TB
 
 ## Design notes
 
-- **One NAT gateway per AZ** (high availability): if one AZ fails, the others keep outbound access.
-  Costs about 3× a single shared NAT gateway (~$0.045/hr each).
+- **2 AZs**: the minimum EKS accepts, still highly available, cheaper than the course's 3.
+- **One NAT gateway per AZ** (high availability): if one AZ fails, the other keeps outbound access.
+  ~$0.045/hr each, so ~$2.15/day for 2.
 - **Tags** `kubernetes.io/role/elb` (public) and `kubernetes.io/role/internal-elb` (private) tell
   Kubernetes where to put internet-facing and internal load balancers.
 - **DNS support + DNS hostnames** are both enabled; EKS requires them.
