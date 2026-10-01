@@ -99,7 +99,7 @@ flowchart LR
 
 | Area | Tools |
 |---|---|
-| Cloud | AWS (EC2, VPC, EKS, IAM, S3, DynamoDB) |
+| Cloud | AWS (EC2, VPC, EKS, IAM, S3) |
 | Containers | Docker, Docker Compose |
 | Infrastructure as Code | Terraform |
 | Orchestration | Kubernetes (EKS) |
@@ -108,10 +108,10 @@ flowchart LR
 
 ## Progress
 
-- [ ] Environment setup (EC2, Docker, kubectl, Terraform, AWS CLI)
-- [ ] Run the app locally with Docker Compose
-- [ ] Containerize services (Go, Java, Python)
-- [ ] Provision VPC + EKS with Terraform (remote state in S3, locking with DynamoDB)
+- [x] Environment setup (EC2, Docker, kubectl, Terraform, AWS CLI)
+- [x] Run the app locally with Docker Compose
+- [x] Containerize services (Go, Java, Python)
+- [x] Provision VPC + EKS with Terraform (remote state in S3, S3-native locking)
 - [ ] Kubernetes manifests + deployment to EKS
 - [ ] Ingress + custom domain
 - [ ] CI with GitHub Actions
