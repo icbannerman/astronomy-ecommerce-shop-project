@@ -3,12 +3,11 @@ kind: Service
 metadata:
   name: frontend-proxy
 spec:
+  type: ClusterIP
   selector:
     app: frontend-proxy
   ports:
     - name: envoy
       port: 8080
       targetPort: 8080
-    - name: envoy-admin
-      port: 10000
-      targetPort: 10000
+
