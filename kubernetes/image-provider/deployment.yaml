@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-provider
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-provider
+  template:
+    metadata:
+      labels:
+        app: image-provider
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: image-provider
+          image: ghcr.io/open-telemetry/demo:2.1.3-image-provider
+          ports:
+            - containerPort: 8081
+          env:
+            - name: IMAGE_PROVIDER_PORT
+              value: "8081"
+            - name: OTEL_COLLECTOR_HOST
+              value: otel-collector
+            - name: OTEL_COLLECTOR_PORT_GRPC
+              value: "4317"
+            - name: OTEL_SERVICE_NAME
+              value: image-provider
+          resources:
+            limits:
+              memory: "120Mi"

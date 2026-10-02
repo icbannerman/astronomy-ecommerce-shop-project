@@ -1,0 +1,30 @@
+apiVersion: apps/v1   # fixed value for Deployments
+kind: Deployment      # tells k8s which controller handles this resource
+metadata:
+  name: currency      # name of this Deployment object
+spec:
+  replicas: 1         # how many Pods the auto-created ReplicaSet should keep alive
+  selector:
+    matchLabels:
+      app: currency   # which Pods this Deployment manages — must match template.metadata.labels below
+  template:           # the Pod blueprint (cookie-cutter) used to stamp out each replica
+    metadata:
+      labels:
+        app: currency # the REAL label stamped on each Pod — this is what the Service's selector matches against
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: currency                            # name of the container inside the Pod
+          image: ghcr.io/icbannerman/currency:v2     # our own GHCR image (C++ build)
+          ports:
+            - containerPort: 7001                    # port the app actually listens on (from .env CURRENCY_PORT)
+          env:
+            - name: CURRENCY_PORT
+              value: "7001"                           # app reads this to know which port to bind to
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317        # where to send traces/metrics (gRPC port on the Collector Service)
+            - name: OTEL_SERVICE_NAME
+              value: currency                          # tags this service's telemetry data in Jaeger/Grafana
+          resources:
+            limits:
+              memory: "20Mi"   # caps memory usage; k8s restarts the container if it goes over

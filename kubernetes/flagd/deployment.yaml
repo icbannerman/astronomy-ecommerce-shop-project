@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flagd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flagd
+  template:
+    metadata:
+      labels:
+        app: flagd
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: flagd
+          image: ghcr.io/open-feature/flagd:v0.12.8
+          args: ["start", "--uri", "file:./etc/flagd/demo.flagd.json"]
+          ports:
+            - containerPort: 8013
+            - containerPort: 8016
+          env:
+            - name: FLAGD_OTEL_COLLECTOR_URI
+              value: otel-collector:4317
+            - name: FLAGD_METRICS_EXPORTER
+              value: otel
+            - name: GOMEMLIMIT
+              value: 60MiB
+            - name: OTEL_SERVICE_NAME
+              value: flagd
+          resources:
+            limits:
+              memory: "75Mi"
+          volumeMounts:
+            - name: flagd-config
+              mountPath: /etc/flagd
+      volumes:
+        - name: flagd-config
+          configMap:
+            name: flagd-config

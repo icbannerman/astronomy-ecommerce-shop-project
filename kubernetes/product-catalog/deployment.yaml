@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-catalog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-catalog
+  template:
+    metadata:
+      labels:           # <- this is where the actual LABEL gets attached
+        app: product-catalog
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: product-catalog
+          image: ghcr.io/icbannerman/product-catalog:v2
+          ports:
+            - containerPort: 3550
+          env:
+            - name: PRODUCT_CATALOG_PORT
+              value: "3550"
+            - name: PRODUCT_CATALOG_RELOAD_INTERVAL
+              value: "10"
+            - name: FLAGD_HOST
+              value: flagd
+            - name: FLAGD_PORT
+              value: "8013"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: product-catalog
+          resources:
+            limits:
+              memory: "20Mi"

@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ad
+  template:
+    metadata:
+      labels:
+        app: ad
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: ad
+          image: ghcr.io/icbannerman/ad:v1
+          ports:
+            - containerPort: 9555
+          env:
+            - name: AD_PORT
+              value: "9555"
+            - name: FLAGD_HOST
+              value: flagd
+            - name: FLAGD_PORT
+              value: "8013"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4318
+            - name: OTEL_SERVICE_NAME
+              value: ad
+          resources:
+            limits:
+              memory: "300Mi"

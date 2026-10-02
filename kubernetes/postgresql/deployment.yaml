@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: postgresql
+          image: ghcr.io/open-telemetry/demo:2.1.3-postgresql
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: root
+            - name: POSTGRES_PASSWORD
+              value: otel
+            - name: POSTGRES_DB
+              value: otel
+          resources:
+            limits:
+              memory: "80Mi"

@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping
+  template:
+    metadata:
+      labels:
+        app: shipping
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: shipping
+          image: ghcr.io/open-telemetry/demo:2.1.3-shipping
+          ports:
+            - containerPort: 50050
+          env:
+            - name: SHIPPING_PORT
+              value: "50050"
+            - name: QUOTE_ADDR
+              value: http://quote:8090
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: shipping
+          resources:
+            limits:
+              memory: "20Mi"

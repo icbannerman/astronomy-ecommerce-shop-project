@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: load-generator
+          image: ghcr.io/icbannerman/load-generator:v1
+          ports:
+            - containerPort: 8089
+          env:
+            - name: LOCUST_WEB_PORT
+              value: "8089"
+            - name: LOCUST_USERS
+              value: "5"
+            - name: LOCUST_HOST
+              value: http://frontend-proxy:8080
+            - name: LOCUST_HEADLESS
+              value: "false"
+            - name: LOCUST_AUTOSTART
+              value: "true"
+            - name: LOCUST_WEB_HOST
+              value: "0.0.0.0"
+            - name: FLAGD_HOST
+              value: flagd
+            - name: FLAGD_PORT
+              value: "8013"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: load-generator
+          resources:
+            limits:
+              memory: "1500Mi"

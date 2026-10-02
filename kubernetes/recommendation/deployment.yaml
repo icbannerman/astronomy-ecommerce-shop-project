@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendation
+  template:
+    metadata:
+      labels:
+        app: recommendation
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: recommendation
+          image: ghcr.io/open-telemetry/demo:2.1.3-recommendation
+          ports:
+            - containerPort: 9001
+          env:
+            - name: RECOMMENDATION_PORT
+              value: "9001"
+            - name: PRODUCT_CATALOG_ADDR
+              value: product-catalog:3550
+            - name: FLAGD_HOST
+              value: flagd
+            - name: FLAGD_PORT
+              value: "8013"
+            - name: OTEL_PYTHON_LOG_CORRELATION
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: recommendation
+            - name: PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION
+              value: python
+          resources:
+            limits:
+              memory: "500Mi"

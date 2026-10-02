@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: frontend
+          image: ghcr.io/open-telemetry/demo:2.1.3-frontend
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: FRONTEND_ADDR
+              value: frontend:8080
+            - name: AD_ADDR
+              value: ad:9555
+            - name: CART_ADDR
+              value: cart:7070
+            - name: CHECKOUT_ADDR
+              value: checkout:5050
+            - name: CURRENCY_ADDR
+              value: currency:7001
+            - name: PRODUCT_CATALOG_ADDR
+              value: product-catalog:3550
+            - name: RECOMMENDATION_ADDR
+              value: recommendation:9001
+            - name: SHIPPING_ADDR
+              value: http://shipping:50050
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: ENV_PLATFORM
+              value: local
+            - name: OTEL_SERVICE_NAME
+              value: frontend
+            - name: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: http://localhost:8080/otlp-http/v1/traces
+            - name: WEB_OTEL_SERVICE_NAME
+              value: frontend-web
+            - name: OTEL_COLLECTOR_HOST
+              value: otel-collector
+            - name: FLAGD_HOST
+              value: flagd
+            - name: FLAGD_PORT
+              value: "8013"
+          resources:
+            limits:
+              memory: "250Mi"

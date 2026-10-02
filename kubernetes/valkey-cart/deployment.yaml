@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valkey-cart
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valkey-cart
+  template:
+    metadata:
+      labels:
+        app: valkey-cart
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: valkey-cart
+          image: valkey/valkey:8.1.3-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              memory: "20Mi"

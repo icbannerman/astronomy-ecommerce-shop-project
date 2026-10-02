@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend-proxy
+  template:
+    metadata:
+      labels:
+        app: frontend-proxy
+    spec:
+      serviceAccountName: astronomy-shop
+      containers:
+        - name: frontend-proxy
+          image: ghcr.io/open-telemetry/demo:2.1.3-frontend-proxy
+          ports:
+            - containerPort: 8080
+            - containerPort: 10000
+          env:
+            - name: FRONTEND_PORT
+              value: "8080"
+            - name: FRONTEND_HOST
+              value: frontend
+            - name: LOCUST_WEB_HOST
+              value: "0.0.0.0"
+            - name: LOCUST_WEB_PORT
+              value: "8089"
+            - name: GRAFANA_PORT
+              value: "3000"
+            - name: GRAFANA_HOST
+              value: grafana
+            - name: JAEGER_UI_PORT
+              value: "16686"
+            - name: JAEGER_HOST
+              value: jaeger
+            - name: OTEL_COLLECTOR_HOST
+              value: otel-collector
+            - name: IMAGE_PROVIDER_HOST
+              value: image-provider
+            - name: IMAGE_PROVIDER_PORT
+              value: "8081"
+            - name: OTEL_COLLECTOR_PORT_GRPC
+              value: "4317"
+            - name: OTEL_COLLECTOR_PORT_HTTP
+              value: "4318"
+            - name: OTEL_SERVICE_NAME
+              value: frontend-proxy
+            - name: ENVOY_PORT
+              value: "8080"
+            - name: ENVOY_ADMIN_PORT
+              value: "10000"
+            - name: FLAGD_HOST
+              value: flagd
+            - name: FLAGD_PORT
+              value: "8013"
+            - name: FLAGD_UI_HOST
+              value: flagd-ui
+            - name: FLAGD_UI_PORT
+              value: "4000"
+          resources:
+            limits:
+              memory: "65Mi"

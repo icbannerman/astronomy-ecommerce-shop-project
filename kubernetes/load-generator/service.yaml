@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: load-generator
+spec:
+  selector:
+    app: load-generator
+  ports:
+    - port: 8089
+      targetPort: 8089
