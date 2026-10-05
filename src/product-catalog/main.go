@@ -43,7 +43,6 @@ import (
 	pb "github.com/opentelemetry/opentelemetry-demo/src/product-catalog/genproto/oteldemo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -235,15 +234,12 @@ func loadProductCatalog() {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				logger.Info("Reloading Product Catalog...")
-				catalog, err = readProductFiles()
-				if err != nil {
-					logger.Error(fmt.Sprintf("Error reading product files: %v", err))
-					continue
-				}
+		for range ticker.C {
+			logger.Info("Reloading Product Catalog...")
+			catalog, err = readProductFiles()
+			if err != nil {
+				logger.Error(fmt.Sprintf("Error reading product files: %v", err))
+				continue
 			}
 		}
 	}()
@@ -393,9 +389,3 @@ func (p *productCatalog) checkProductFailure(ctx context.Context, id string) boo
 	return failureEnabled
 }
 
-func createClient(ctx context.Context, svcAddr string) (*grpc.ClientConn, error) {
-	return grpc.DialContext(ctx, svcAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-	)
-}
