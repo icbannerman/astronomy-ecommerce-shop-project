@@ -1,0 +1,85 @@
+#CI for load-generator service
+# Flow: pull request -> checks only (dependency install, syntax check).
+#       merge to main (a push) -> checks, then publish the image and update the Kubernetes manifest.
+name: load-generator
+
+concurrency:
+  group: load-generator-deploy
+  cancel-in-progress: false
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    # No pb/** here: unlike the other services, load-generator doesn't use the shared proto.
+    paths:
+      - "src/load-generator/**"
+      - ".github/workflows/load-generator-ci.yaml"
+
+jobs:
+  # Installs dependencies and checks the script parses. No test suite or linter is configured
+  # for this service, so unlike product-catalog there's no separate code-quality job.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install dependencies
+        working-directory: src/load-generator
+        run: pip install -r requirements.txt
+      - name: check locustfile syntax
+        working-directory: src/load-generator
+        run: python -m py_compile locustfile.py
+
+  docker:
+    needs: build
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Unlike the other three services, this one builds from its own folder: nothing it
+      # needs lives outside src/load-generator/.
+      - name: build and push image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: src/load-generator
+          file: src/load-generator/Dockerfile
+          push: true
+          tags: ghcr.io/icbannerman/load-generator:${{ github.run_id }}
+
+  update-k8s:
+    needs: docker
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: point deployment at new image
+        run: |
+          sed -i "s|image: ghcr.io/icbannerman/load-generator:.*|image: ghcr.io/icbannerman/load-generator:${{ github.run_id }}|" kubernetes/load-generator/deployment.yaml
+      - name: commit and push manifest change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/load-generator/deployment.yaml
+          git commit -m "Update load-generator image to ${{ github.run_id }}"
+          git push

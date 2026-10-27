@@ -1,0 +1,94 @@
+#CI for ad service
+# Flow: pull request -> checks only (build, test).
+#       merge to main (a push) -> checks, then publish the image and update the Kubernetes manifest.
+name: ad
+
+# Only one run of this workflow at a time. If two merges land close together, the second run
+# waits instead of pushing a stale manifest commit that GitHub would reject.
+concurrency:
+  group: ad-deploy
+  cancel-in-progress: false
+
+# WHEN the workflow runs.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    # pb/** because ad's build.gradle compiles the shared proto from the repo root.
+    paths:
+      - "src/ad/**"
+      - "pb/**"
+      - ".github/workflows/ad-ci.yaml"
+
+jobs:
+  # Compiles and runs tests. No linter configured for this service (no Checkstyle etc.),
+  # so unlike product-catalog there's no separate code-quality job.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Matches sourceCompatibility = VERSION_21 in build.gradle.
+      - name: set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      # Caches the Gradle wrapper download and dependencies between runs.
+      - name: set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      # build.gradle's default protoSourceDir already points at the repo-root pb/ folder
+      # (project.projectDir.parentFile.parentFile + "/pb"), so no override is needed here.
+      - name: Build and test ad
+        working-directory: src/ad
+        run: ./gradlew build --no-daemon
+
+  # Builds the image and pushes it to GHCR. Runs only on a push to main.
+  docker:
+    needs: build
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Build context is the repo root: the Dockerfile reads pb/ from outside src/ad/.
+      - name: build and push image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/ad/Dockerfile
+          push: true
+          tags: ghcr.io/icbannerman/ad:${{ github.run_id }}
+
+  # Points the Kubernetes manifest at the new image and commits it. Runs only on a push to main.
+  update-k8s:
+    needs: docker
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: point deployment at new image
+        run: |
+          sed -i "s|image: ghcr.io/icbannerman/ad:.*|image: ghcr.io/icbannerman/ad:${{ github.run_id }}|" kubernetes/ad/deployment.yaml
+      - name: commit and push manifest change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/ad/deployment.yaml
+          git commit -m "Update ad image to ${{ github.run_id }}"
+          git push
