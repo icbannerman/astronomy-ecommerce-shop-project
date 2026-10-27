@@ -15,7 +15,7 @@ spec:
       serviceAccountName: astronomy-shop
       containers:
         - name: product-catalog
-          image: ghcr.io/icbannerman/product-catalog:40587989364
+          image: ghcr.io/icbannerman/product-catalog:40595975913
           ports:
             - containerPort: 3550
           env:
