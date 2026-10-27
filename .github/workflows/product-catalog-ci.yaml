@@ -1,0 +1,134 @@
+#CI for product catalog service
+# This file is read by GitHub Actions (any YAML in .github/workflows/ is picked up).
+# Flow: pull request -> checks only (build, test, lint).
+#       merge to main (a push) -> checks, then publish the image and update the Kubernetes manifest.
+name: product-catalog
+
+# Only one run of this workflow at a time. If two merges land close together, the second run
+# waits instead of pushing a stale manifest commit that GitHub would reject.
+# cancel-in-progress: false means a waiting run never cancels one that is already publishing.
+concurrency:
+  group: product-catalog-deploy
+  cancel-in-progress: false
+
+
+# WHEN the workflow runs.
+on:
+  # Runs the checks on every PR into main, before anything is merged.
+  pull_request:
+    branches: [main]
+  # Runs when code lands on main (a merge creates a push to main).
+  # paths: only runs when a file in these folders changed. A manifest-only commit from the
+  # update-k8s job touches kubernetes/, so it does not start a new run.
+  push:
+    branches: [main]
+    paths:
+      - "src/product-catalog/**"
+      - ".github/workflows/product-catalog-ci.yaml"
+
+
+# WHAT runs. Each job gets its own fresh Ubuntu VM, so jobs share no files unless we pass them.
+jobs:
+  # Stage 1: unit tests and build. Runs on PRs and pushes.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # The VM starts empty, so the code must be cloned first.
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Installs Go. The version matches go.mod (go 1.24.2).
+      - name: set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.2"
+      # Compiles the service. The go.mod file lives in src/product-catalog, so run from there.
+      - name: Build product catalog
+        working-directory: src/product-catalog
+        run: go build -o product-catalog-service .
+      # ./... runs tests in this folder and every subfolder.
+      # Note: there are no _test.go files yet, so this passes without testing anything.
+      - name: Run unit tests
+        working-directory: src/product-catalog
+        run: go test ./...
+
+  # Stage 1, in parallel with build: static analysis. Runs on PRs and pushes.
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      # Separate VM, so the code must be cloned again.
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Runs many Go linters (unused variables, unchecked errors, dead code) in one step.
+      # The version is pinned so the same rules apply on every run.
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          working-directory: src/product-catalog
+
+  # Stage 2: build the image and push it to GHCR. Runs only on a push to main.
+  docker:
+    # Waits for both checks. If either fails, nothing is published.
+    needs: [build, code-quality]
+    # Skips this job on pull requests, so unreviewed code never reaches the registry.
+    if: github.event_name == 'push'
+    permissions:
+      # Read-only access to the repo code.
+      contents: read
+      # Lets the job push packages (images) to GHCR.
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Buildx is Docker's build engine. The push step below uses it.
+      - name: set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      # Logs in to GHCR. No stored password: GITHUB_TOKEN is created for this run only.
+      # github.actor is the GitHub user who triggered the run (icbannerman for merges to main).
+      - name: log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Builds the image from the Dockerfile and pushes it.
+      # The tag is the run ID, a new number each run, so every build gets its own tag.
+      - name: build and push image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: src/product-catalog
+          file: src/product-catalog/Dockerfile
+          push: true
+          tags: ghcr.io/icbannerman/product-catalog:${{ github.run_id }}
+
+  # Stage 3: point the Kubernetes manifest at the new image and commit it. Runs only on a push to main.
+  update-k8s:
+    # Runs after the image is pushed. If the push failed, the manifest never points at a missing image.
+    needs: docker
+    # Same guard as docker: never commit on a pull request.
+    if: github.event_name == 'push'
+    permissions:
+      # Needed so the job can push a commit to main.
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Replaces the image line in the manifest with the new tag.
+      # The | separators are used because the image name contains slashes.
+      # Only the product-catalog image line in that file matches.
+      - name: point deployment at new image
+        run: |
+          sed -i "s|image: ghcr.io/icbannerman/product-catalog:.*|image: ghcr.io/icbannerman/product-catalog:${{ github.run_id }}|" kubernetes/product-catalog/deployment.yaml
+      # Commits the one changed file and pushes it to main.
+      # The push uses GITHUB_TOKEN, so GitHub does not start a new run from it.
+      # The paths filter above would skip it anyway, since it only changes kubernetes/.
+      - name: commit and push manifest change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/product-catalog/deployment.yaml
+          git commit -m "Update product-catalog image to ${{ github.run_id }}"
+          git push
+
