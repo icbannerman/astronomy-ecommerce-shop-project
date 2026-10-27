@@ -1,5 +1,4 @@
 #CI for product catalog service
-# (retrigger after fixing GHCR workflow permissions)
 # This file is read by GitHub Actions (any YAML in .github/workflows/ is picked up).
 # Flow: pull request -> checks only (build, test, lint).
 #       merge to main (a push) -> checks, then publish the image and update the Kubernetes manifest.
