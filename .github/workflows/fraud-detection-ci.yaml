@@ -89,4 +89,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add kubernetes/fraud-detection/deployment.yaml
           git commit -m "Update fraud-detection image to ${{ github.run_id }}"
+          # Another service's update-k8s job may push to main between this job's checkout
+          # and this push. Rebase onto the latest main so this push isn't rejected as stale.
+          git pull --rebase origin main
           git push
