@@ -112,9 +112,9 @@ flowchart LR
 - [x] Run the app locally with Docker Compose
 - [x] Containerize services (Go, Java, Python)
 - [x] Provision VPC + EKS with Terraform (remote state in S3, S3-native locking)
-- [ ] Kubernetes manifests + deployment to EKS
+- [x] Kubernetes manifests + deployment to EKS
 - [ ] Ingress + custom domain
-- [ ] CI with GitHub Actions
+- [x] CI with GitHub Actions
 - [ ] CD with Argo CD (GitOps)
 
 ## Repo layout
