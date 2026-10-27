@@ -15,7 +15,7 @@ spec:
       serviceAccountName: astronomy-shop
       containers:
         - name: load-generator
-          image: ghcr.io/icbannerman/load-generator:v1
+          image: ghcr.io/icbannerman/load-generator:40593165876
           ports:
             - containerPort: 8089
           env:
