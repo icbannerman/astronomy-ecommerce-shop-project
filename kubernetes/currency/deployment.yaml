@@ -15,7 +15,7 @@ spec:
       serviceAccountName: astronomy-shop
       containers:
         - name: currency                            # name of the container inside the Pod
-          image: ghcr.io/icbannerman/currency:v2     # our own GHCR image (C++ build)
+          image: ghcr.io/icbannerman/currency:40595975928
           ports:
             - containerPort: 7001                    # port the app actually listens on (from .env CURRENCY_PORT)
           env:
