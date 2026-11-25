@@ -18,3 +18,17 @@ module "eks" {
   subnet_ids      = module.vpc.private_subnet_ids
   node_groups     = var.node_groups
 }
+
+# Ingress controller: turns the shop's Ingress into a real AWS ALB.
+module "alb_controller" {
+  source = "./modules/alb-controller"
+
+  cluster_name    = module.eks.cluster_name
+  region          = var.region
+  vpc_id          = module.vpc.vpc_id
+  oidc_issuer_url = module.eks.oidc_issuer_url
+
+  # Wait for the whole cluster module, worker nodes included: Helm waits for the controller's
+  # pods to be Running, and pods can't start until nodes exist.
+  depends_on = [module.eks]
+}
