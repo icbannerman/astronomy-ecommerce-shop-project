@@ -6,6 +6,14 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 
   backend "s3" {
@@ -24,6 +32,20 @@ provider "aws" {
     tags = {
       Project   = "astronomy-ecommerce-shop"
       ManagedBy = "terraform"
+    }
+  }
+}
+
+# Helm talks to the cluster's API server, so it needs the cluster's address, its CA cert, and a
+# login token. The token comes from `aws eks get-token`, the same way kubectl gets one.
+provider "helm" {
+  kubernetes = {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.region]
     }
   }
 }

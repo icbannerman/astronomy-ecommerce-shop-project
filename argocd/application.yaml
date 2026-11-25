@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: astronomy-shop
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/icbannerman/astronomy-ecommerce-shop-project.git
+    targetRevision: main
+    path: kubernetes
+    directory:
+      recurse: true   # manifests live in per-service subfolders
+  destination:
+    server: https://kubernetes.default.svc   # the cluster Argo CD itself runs in
+    namespace: astronomy-shop
+  syncPolicy:
+    automated:
+      prune: true      # delete cluster resources that were removed from Git
+      selfHeal: true   # undo manual changes made directly in the cluster
+    syncOptions:
+      - CreateNamespace=true
