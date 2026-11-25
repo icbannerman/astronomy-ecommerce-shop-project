@@ -279,7 +279,7 @@ public final class AdService {
     Ad explorerTelescope =
         Ad.newBuilder()
             .setRedirectUrl("/product/66VCHSJNUP")
-            .setText("Starsense Explorer Refractor Telescope for sale. 20% off.")
+            .setText("Roof Binoculars for sale. 60% off. Deployed by Argo CD!")
             .build();
     Ad colorImager =
         Ad.newBuilder()
