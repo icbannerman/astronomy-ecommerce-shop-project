@@ -274,7 +274,7 @@ public final class AdService {
     Ad binoculars =
         Ad.newBuilder()
             .setRedirectUrl("/product/2ZYFJ3GM2N")
-            .setText("Roof Binoculars for sale. 60% off. Deployed by Argo CD!")
+            .setText("Roof Binoculars for sale. 65% off. Deployed by Argo CD!")
             .build();
     Ad explorerTelescope =
         Ad.newBuilder()
