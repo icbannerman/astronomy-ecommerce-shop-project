@@ -113,9 +113,10 @@ flowchart LR
 - [x] Containerize services (Go, Java, Python)
 - [x] Provision VPC + EKS with Terraform (remote state in S3, S3-native locking)
 - [x] Kubernetes manifests + deployment to EKS
-- [ ] Ingress + custom domain
+- [x] Ingress via AWS Load Balancer Controller (installed by Terraform, IRSA)
 - [x] CI with GitHub Actions
-- [ ] CD with Argo CD (GitOps)
+- [x] CD with Argo CD (GitOps)
+- [ ] Custom domain
 
 ## Repo layout
 
