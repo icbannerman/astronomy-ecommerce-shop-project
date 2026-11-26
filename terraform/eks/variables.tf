@@ -37,7 +37,7 @@ variable "cluster_name" {
 variable "cluster_version" {
   description = "Kubernetes version for the control plane"
   type        = string
-  default     = "1.31"
+  default     = "1.34" # 1.31 was in extended support ($0.60/hr vs $0.10/hr); cluster is rebuilt each session, so no in-place upgrade needed
 }
 
 variable "node_groups" {
@@ -51,7 +51,7 @@ variable "node_groups" {
   default = {
     general = {
       instance_types = ["t3.medium"]
-      desired_size   = 2
+      desired_size   = 3 # 2 wasn't enough: t3.medium fits 17 pods each, and shop + Argo CD + system pods need ~35
       min_size       = 1
       max_size       = 3
     }
