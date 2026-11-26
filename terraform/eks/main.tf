@@ -27,8 +27,5 @@ module "alb_controller" {
   region          = var.region
   vpc_id          = module.vpc.vpc_id
   oidc_issuer_url = module.eks.oidc_issuer_url
-
-  # Wait for the whole cluster module, worker nodes included: Helm waits for the controller's
-  # pods to be Running, and pods can't start until nodes exist.
-  depends_on = [module.eks]
+  node_group_arns = module.eks.node_group_arns # only the Helm install waits on these (see the module)
 }

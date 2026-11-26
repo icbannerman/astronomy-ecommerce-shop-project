@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: astronomy-shop
   namespace: argocd
+  # Deleting this Application also deletes everything it deployed (incl. the Ingress, so the
+  # ALB controller removes the ALB). Without it, a delete only removes this object.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
