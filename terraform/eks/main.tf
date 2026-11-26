@@ -29,3 +29,11 @@ module "alb_controller" {
   oidc_issuer_url = module.eks.oidc_issuer_url
   node_group_arns = module.eks.node_group_arns # only the Helm install waits on these (see the module)
 }
+
+# Argo CD and the shop's Application. Argo CD then deploys the shop from Git.
+module "argocd" {
+  source = "./modules/argocd"
+
+  application_file          = "${path.root}/../../argocd/application.yaml"
+  alb_controller_release_id = module.alb_controller.helm_release_id
+}
