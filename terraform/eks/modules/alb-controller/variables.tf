@@ -29,3 +29,8 @@ variable "chart_version" {
   type        = string
   default     = "3.5.0"
 }
+
+variable "node_group_arns" {
+  description = "Node group ARNs from the cluster module. Only used to make the Helm install wait for worker nodes"
+  type        = list(string)
+}

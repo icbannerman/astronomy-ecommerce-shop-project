@@ -79,6 +79,10 @@ resource "aws_eks_node_group" "main" {
 
   instance_types = each.value.instance_types # each.value = this key's whole object, e.g. {instance_types, desired_size, min_size, max_size}
 
+  # Node OS image. Set explicitly instead of relying on AWS's default: EKS stopped publishing
+  # Amazon Linux 2 images after Kubernetes 1.32, and Amazon Linux 2023 is the current EKS-optimized OS.
+  ami_type = "AL2023_x86_64_STANDARD"
+
   scaling_config {
     desired_size = each.value.desired_size # the actual number of EC2 instances AWS launches for this node group
     min_size     = each.value.min_size

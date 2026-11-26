@@ -37,7 +37,7 @@ variable "cluster_name" {
 variable "cluster_version" {
   description = "Kubernetes version for the control plane"
   type        = string
-  default     = "1.34" # 1.31 was in extended support ($0.60/hr vs $0.10/hr); cluster is rebuilt each session, so no in-place upgrade needed
+  default     = "1.36"
 }
 
 variable "node_groups" {

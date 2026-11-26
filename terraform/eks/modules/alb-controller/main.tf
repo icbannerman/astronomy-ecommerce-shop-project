@@ -57,6 +57,13 @@ resource "aws_iam_role_policy_attachment" "this" {
   policy_arn = aws_iam_policy.this.arn
 }
 
+# Holds the node group ARNs. Reading var.node_group_arns here makes this wait until the worker nodes
+# exist. The Helm install depends on this, instead of the whole module depending on module.eks,
+# so a node-count change no longer makes Terraform re-check the OIDC certificate (① and ②).
+resource "terraform_data" "nodes_ready" {
+  input = var.node_group_arns
+}
+
 # ⑥ Install the controller itself from AWS's Helm chart.
 # Unlike the manual install, Helm creates the service account here, annotated with the role ARN
 # (that annotation is what links the service account to the IAM role from ④).
@@ -78,6 +85,7 @@ resource "helm_release" "this" {
     { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = aws_iam_role.this.arn },
   ]
 
-  # The controller must have its permissions before its pods start calling AWS.
-  depends_on = [aws_iam_role_policy_attachment.this]
+  # The controller must have its permissions before its pods start calling AWS, and its pods need
+  # worker nodes to run on (Helm waits for them to be Running).
+  depends_on = [aws_iam_role_policy_attachment.this, terraform_data.nodes_ready]
 }
